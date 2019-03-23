@@ -55,6 +55,15 @@ meetup_groups <- meetup_groups[which(grepl("ladies", tolower(urlnames))),]
 rm(first_letter, urlnames)
 ```
 
+## Chapters to migrate to meetup pro
+
+*Which chapters do not belong to R-Ladies Global?*
+
+```{r migration}
+chapters2migrate <- meetup_groups[meetup_groups$organizer != "R-Ladies Global",]
+chapters2migrate$name
+```
+
 ## Is the urlname consistent across groups?
 
 The official urlname should follow this naming convention:
@@ -110,15 +119,6 @@ groupE <- setdiff(chapternames, groupD)
 groupE
 ```
 
-## Chapters to migrate to meetup pro
-
-*Which chapters do not belong to R-Ladies Global?*
-
-```{r migration}
-chapters2migrate <- meetup_groups[meetup_groups$organizer != "R-Ladies Global",]
-chapters2migrate$name
-```
-
 ## Chapter activity
 
 To check chapter activity is better to use R-Ladies Global API key so that we have access to private groups.
@@ -126,7 +126,7 @@ To check chapter activity is better to use R-Ladies Global API key so that we ha
 Let's now extract the number of past events and the dates of last and next events, for each chapter.
 
 ```{r activity}
-meetup_groups$past_events <- NA
+meetup_groups$past_events <- 0
 meetup_groups$date_last_event <- NA
 meetup_groups$date_next_event <- NA
 
@@ -145,9 +145,9 @@ x <- map(meetup_groups$urlname,
 for (i in seq_along(x)){
   message(meetup_groups$urlname[i])
   if (is.null(x[[i]]$error)){
-    temp <- x[[i]]$result
-    if ("past" %in% temp$status){
-      past <- temp %>%
+    temp_table <- x[[i]]$result
+    if ("past" %in% temp_table$status){
+      past <- temp_table %>%
         group_by(status) %>%
         summarise(count = n(),
                   mydates = format(max(local_date), '%Y-%m-%d'))
@@ -157,8 +157,8 @@ for (i in seq_along(x)){
       meetup_groups$past_events[i] <- 0
       meetup_groups$date_last_event[i] <- NA
     }
-    if ("upcoming" %in% temp$status){
-      upcoming <- temp %>%
+    if ("upcoming" %in% temp_table$status){
+      upcoming <- temp_table %>%
         group_by(status) %>%
         summarise(count = n(),
                   mydates = format(min(local_date), '%Y-%m-%d'))
@@ -166,10 +166,6 @@ for (i in seq_along(x)){
     }else{
       meetup_groups$date_next_event[i] <- NA
     }
-  }else{
-    meetup_groups$past_events[i] <- 0
-    meetup_groups$date_last_event[i] <- NA
-    meetup_groups$date_next_event[i] <- NA
   }
 }
 ```
@@ -180,7 +176,7 @@ for (i in seq_along(x)){
 no_events <- meetup_groups %>%
   filter(past_events == 0,
          is.na(date_next_event),
-         created < as.POSIXct("2018-04-30")) %>%
+         created < Sys.Date() - 6*30) %>%
   arrange(created)
 ```
 
